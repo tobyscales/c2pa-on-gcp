@@ -5,14 +5,14 @@ variable "project_id" {
   type        = string
 }
 
-variable "region" {
-  description = "The GCP region for deployment."
-  type        = string
-  default     = "us-central1"
+variable "regions" {
+  description = "A list of GCP regions for deploying resilient resources."
+  type        = list(string)
+  default     = ["us-central1", "us-east1"]
 }
 
-variable "location" {
-  description = "The GCP location for GCS and CAS."
+variable "multi_region_location" {
+  description = "The multi-region location for GCS and KMS (e.g., US, EU, ASIA)."
   type        = string
   default     = "US"
 }
