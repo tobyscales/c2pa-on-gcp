@@ -1,0 +1,6 @@
+# function_source/requirements.txt
+google-cloud-storage
+google-cloud-private-ca
+google-cloud-kms
+google-cloud-secret-manager
+c2pa
