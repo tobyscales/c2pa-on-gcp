@@ -21,12 +21,13 @@ resource "google_service_account" "function_sa" {
   project      = var.project_id
 }
 
-# 4. Grant the service account necessary permissions
+# 4. Grant the service account permissions, including Secret Accessor
 resource "google_project_iam_member" "function_permissions" {
   for_each = toset([
     "roles/cloudkms.signerVerifier",
     "roles/privateca.certificateRequester",
-    "roles/storage.objectAdmin"
+    "roles/storage.objectAdmin",
+    "roles/secretmanager.secretAccessor" # <--- ADD THIS ROLE
   ])
   project = var.project_id
   role    = each.key
@@ -51,22 +52,21 @@ resource "google_cloudfunctions_function" "c2pa_signer" {
   for_each = toset(var.regions)
 
   name                  = "c2pa-signer-function-${each.key}"
-  region                = each.key # Deploy to the specific region
-  runtime               = "python310"
-  source_archive_bucket = google_storage_bucket.uploads.name
-  source_archive_object = google_storage_bucket_object.function_archive.name
-  entry_point           = "c2pa_sign_pubsub" # Use the Pub/Sub entry point
+  # ... (other function settings) ...
   service_account_email = google_service_account.function_sa.email
   
-  # Trigger from the single Pub/Sub topic
   pubsub_trigger {
     topic = google_pubsub_topic.gcs_events.name
   }
 
+  # Pass the SECRET NAMES (not values) as environment variables
   environment_variables = {
-    SIGNED_BUCKET_NAME = google_storage_bucket.signed.name
-    KMS_KEY_ID         = google_kms_crypto_key.signing_key.id
-    CA_POOL_ID         = google_privateca_ca_pool.pool.id
+    PROJECT_ID                  = var.project_id # Pass project_id for secret path
+    SIGNED_BUCKET_NAME          = google_storage_bucket.signed.name
+    KMS_KEY_ID                  = google_kms_crypto_key.signing_key.id
+    CA_POOL_ID                  = google_privateca_ca_pool.pool.id
+    AUTHOR_NAME_SECRET_ID       = google_secret_manager_secret.author_name_secret.secret_id
+    CLAIM_GENERATOR_SECRET_ID   = google_secret_manager_secret.claim_generator_secret.secret_id
   }
 
   depends_on = [
