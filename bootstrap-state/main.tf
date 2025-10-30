@@ -45,3 +45,12 @@ resource "google_secret_manager_secret_version" "tfstate_bucket_name_version" {
   secret      = google_secret_manager_secret.tfstate_bucket_name_secret.id
   secret_data = google_storage_bucket.tfstate.name
 }
+
+resource "google_project_service" "apis" {
+  for_each = toset([
+    "storage.googleapis.com",
+    "secretmanager.googleapis.com"
+  ])
+  project = var.project_id
+  service = each.key
+}
