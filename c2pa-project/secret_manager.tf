@@ -6,7 +6,7 @@ resource "google_secret_manager_secret" "author_name_secret" {
   secret_id = "c2pa-author-name"
 
   replication {
-    automatic = true
+    auto {}
   }
 }
 
@@ -22,7 +22,7 @@ resource "google_secret_manager_secret" "claim_generator_secret" {
   secret_id = "c2pa-claim-generator"
 
   replication {
-    automatic = true
+    auto {}
   }
 }
 

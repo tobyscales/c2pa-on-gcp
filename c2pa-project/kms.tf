@@ -1,8 +1,11 @@
 # kms.tf
 
 resource "google_kms_key_ring" "keyring" {
+  # This line tells Terraform to use the aliased provider for this resource
+  provider = google.multi_region_provider
+
   name     = "c2pa-keyring"
-  location = var.multi_region_location
+  location = var.multi_region_location # This should be "US", "EU", etc.
   project  = var.project_id
 }
 

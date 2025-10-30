@@ -48,7 +48,8 @@ resource "google_secret_manager_secret_version" "tfstate_bucket_name_version" {
 
 resource "google_project_service" "apis" {
   for_each = toset([
-    "storage.googleapis.com",
+        "storage.googleapis.com",
+        "cloudresourcemanager.googleapis.com",
     "secretmanager.googleapis.com"
   ])
   project = var.project_id

@@ -14,14 +14,14 @@ resource "google_privateca_certificate_authority" "regional_ca" {
   certificate_authority_id = "c2pa-ca-${each.value}"
   location                 = each.value # Create a CA in each region
   project                  = var.project_id
-  type                     = "SUBORDINATE" # Subordinate to a root or another intermediate
+  #type                     = "SUBORDINATE" # Subordinate to a root or another intermediate
   
   # For production, you would create a self-signed root CA separately and have
   # these subordinates chained to it. For this example, we make them self-signed for simplicity.
   # In a true subordinate setup, you'd define a `subordinate_config` block.
   config {
     subject_config {
-      subject = {
+      subject {
         organization = "C2PA Signing Authority"
         common_name  = "C2PA Regional CA ${each.value}"
       }
@@ -34,6 +34,8 @@ resource "google_privateca_certificate_authority" "regional_ca" {
         base_key_usage {
           cert_sign = true
           crl_sign  = true
+        }
+    extended_key_usage {
         }
       }
     }
