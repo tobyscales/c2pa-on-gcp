@@ -24,7 +24,8 @@ resource "google_project_service" "apis" {
     "cloudkms.googleapis.com",
     "privateca.googleapis.com",
     "cloudfunctions.googleapis.com",
-    "cloudbuild.googleapis.com"
+    "cloudbuild.googleapis.com",
+    "secretmanager.googleapis.com"
   ])
   project = var.project_id
   service = each.key
