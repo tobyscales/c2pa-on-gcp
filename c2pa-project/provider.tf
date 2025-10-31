@@ -20,11 +20,8 @@ provider "google" {
   region  = var.regions[0]
 }
 
-# ADD THIS ALIAS: A provider specifically for multi-regional resources
+# A provider specifically for multi-regional resources
 provider "google" {
-  alias   = "multi_region_provider"
+  alias   = "multi_region"
   project = var.project_id
-  # This can be set to any region within the multi-region, 
-  # but setting it to the multi-region itself is clearer.
-  region  = var.multi_region_location 
 }

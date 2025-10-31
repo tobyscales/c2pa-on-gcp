@@ -1,10 +1,14 @@
 # cas.tf
 
 resource "google_privateca_ca_pool" "pool" {
-  name     = "c2pa-ca-pool"
+  name     = "c2pa-ca-pool0"
   location = var.regions[0] # Place the pool in the primary region
   tier     = "DEVOPS"
   project  = var.project_id
+
+    depends_on = [
+    google_project_service.apis["privateca.googleapis.com"]
+  ]
 }
 
 resource "google_privateca_certificate_authority" "regional_ca" {
@@ -14,7 +18,7 @@ resource "google_privateca_certificate_authority" "regional_ca" {
   certificate_authority_id = "c2pa-ca-${each.value}"
   location                 = each.value # Create a CA in each region
   project                  = var.project_id
-  #type                     = "SUBORDINATE" # Subordinate to a root or another intermediate
+  type                     = "SUBORDINATE" # Subordinate to a root or another intermediate
   
   # For production, you would create a self-signed root CA separately and have
   # these subordinates chained to it. For this example, we make them self-signed for simplicity.
@@ -44,7 +48,7 @@ resource "google_privateca_certificate_authority" "regional_ca" {
     algorithm = "RSA_PKCS1_4096_SHA256"
   }
   
-  lifetime = "8760h" # 1 year
+  lifetime = "${365 * 24 * 3600}s" # 1 year
 
   # Ensure the pool exists before creating the CA
   depends_on = [google_privateca_ca_pool.pool]

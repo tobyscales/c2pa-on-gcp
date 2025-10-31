@@ -8,6 +8,10 @@ resource "google_secret_manager_secret" "author_name_secret" {
   replication {
     auto {}
   }
+  depends_on = [
+    google_project_service.apis["secretmanager.googleapis.com"]
+  ]
+
 }
 
 # Add the secret value as a new version
