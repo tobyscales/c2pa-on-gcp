@@ -45,6 +45,9 @@ Before you begin, ensure you have the following:
 
 This project uses a two-stage process. First, we bootstrap the secure backend for Terraform's state. Second, we deploy the main application.
 
+[![Open this project in Cloud
+Shell](http://gstatic.com/cloudssh/images/open-btn.png)](https://console.cloud.google.com/cloudshell/open?git_repo=https://github.com/tobyscales/c2pa-on-gcp.git&page=editor&tutorial=README.md)
+
 ### Stage 1: Bootstrap the Backend (One-Time Setup)
 
 This stage creates the GCS bucket where Terraform will securely store its state file and a Secret Manager secret to hold the bucket's name.
