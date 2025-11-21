@@ -10,9 +10,9 @@ data "google_storage_project_service_account" "gcs_account" {
 }
 
 # Get project number for constructing default service account emails
-data "google_project" "project" {
-  project_id = var.project_id
-}
+#data "google_project" "project" {
+#  project_id = var.project_id
+#}
 
 # Allow GCS Service Account to publish to our Pub/Sub topic
 resource "google_pubsub_topic_iam_member" "gcs_pubsub_publisher" {
