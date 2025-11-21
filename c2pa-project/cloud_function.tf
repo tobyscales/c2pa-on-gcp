@@ -27,8 +27,6 @@ resource "google_project_iam_member" "cloud_build_permissions" {
   role    = "roles/cloudbuild.builds.builder"
   member  = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
 }
-# This depends_on ensures that the IAM binding is created before Terraform tries
-# to create the notification, which requires the permission.
 
 # Grant the Logs Writer role to the default Compute Engine service account,
 # which is used by Cloud Build in this project.
@@ -67,7 +65,8 @@ resource "google_project_iam_member" "function_permissions" {
     "roles/cloudkms.signerVerifier",
     "roles/privateca.certificateRequester",
     "roles/storage.objectAdmin",
-    "roles/secretmanager.secretAccessor" 
+    "roles/secretmanager.secretAccessor",
+    "roles/artifactregistry.reader"
   ])
   project = var.project_id
   role    = each.key
