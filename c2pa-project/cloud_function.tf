@@ -56,28 +56,9 @@ resource "google_project_iam_member" "cloud_build_permissions" {
   member  = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
 }
 
-# -----------------------------------------------------------------------------
-# 3. EventArc Config
-# -----------------------------------------------------------------------------
-
-event_trigger {
-    trigger_region = each.key 
-    
-    # This event type fires when a new object is finalized (uploaded)
-    event_type     = "google.cloud.storage.object.v1.finalized"
-    retry_policy   = "RETRY_POLICY_RETRY"
-    
-    # Use the function's SA to manage the trigger identity
-    service_account_email = google_service_account.function_sa.email
-    
-    event_filters {
-      attribute = "bucket"
-      value     = google_storage_bucket.uploads.name
-    }
-  }
 
 # -----------------------------------------------------------------------------
-# 4. Function Source & Deployment (Gen 2)
+# 3. Function Source & Deployment (Gen 2)
 # -----------------------------------------------------------------------------
 
 data "archive_file" "source" {
@@ -126,7 +107,22 @@ resource "google_cloudfunctions2_function" "c2pa_signer" {
     }
   }
 
-
+event_trigger {
+    # FIX: Dynamically set the trigger region to match the function deployment region
+    trigger_region = each.key 
+    
+    # This event type fires when a new object is finalized (uploaded)
+    event_type     = "google.cloud.storage.object.v1.finalized"
+    retry_policy   = "RETRY_POLICY_RETRY"
+    
+    # Use the function's SA to manage the trigger identity
+    service_account_email = google_service_account.function_sa.email
+    
+    event_filters {
+      attribute = "bucket"
+      value     = google_storage_bucket.uploads.name
+    }
+  }
 
   depends_on = [
     google_project_iam_member.function_permissions
