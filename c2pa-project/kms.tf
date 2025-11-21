@@ -1,7 +1,7 @@
 # kms.tf
 
 resource "google_kms_key_ring" "keyring" {
-  name     = "c2pa-keyring"
+  name     = "c2pa-ring-${random_id.suffix.hex}"
   location = "global"
   project  = var.project_id
 
@@ -18,4 +18,5 @@ resource "google_kms_crypto_key" "signing_key" {
     algorithm = "RSA_SIGN_PSS_2048_SHA256"
     protection_level = "HSM"
   }
+  destroy_scheduled_duration = "24h"
 }
