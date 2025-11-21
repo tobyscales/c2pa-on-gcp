@@ -16,14 +16,16 @@ resource "google_storage_bucket" "tfstate" {
   name          = "${var.project_id}-tfstate"
   location      = var.location
   project       = var.project_id
-  force_destroy = false # Protect this bucket!
+  #force_destroy = false # Protect this bucket!
+  force_destroy = true
 
   versioning {
     enabled = true
   }
 
   lifecycle {
-    prevent_destroy = true
+    # prevent_destroy = true
+  prevent_destroy = false
   }
 }
 
