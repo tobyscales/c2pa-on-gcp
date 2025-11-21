@@ -18,5 +18,5 @@ resource "google_kms_crypto_key" "signing_key" {
     algorithm = "RSA_SIGN_PSS_2048_SHA256"
     protection_level = "HSM"
   }
-  destroy_scheduled_duration = "24h"
+  destroy_scheduled_duration = "86400s" # 24 hours
 }
