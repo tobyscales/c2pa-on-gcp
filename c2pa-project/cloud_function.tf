@@ -14,14 +14,6 @@ data "google_storage_project_service_account" "gcs_account" {
 #  project_id = var.project_id
 #}
 
-# Allow GCS Service Account to publish to our Pub/Sub topic
-resource "google_pubsub_topic_iam_member" "gcs_pubsub_publisher" {
-  project = var.project_id
-  topic   = google_pubsub_topic.gcs_events.name
-  role    = "roles/pubsub.publisher"
-  member  = "serviceAccount:${data.google_storage_project_service_account.gcs_account.email_address}"
-}
-
 # Create the dedicated Service Account for the Function Runtime
 resource "google_service_account" "function_sa" {
   account_id   = "c2pa-signer-sa"
@@ -33,11 +25,13 @@ resource "google_service_account" "function_sa" {
 resource "google_project_iam_member" "function_permissions" {
   for_each = toset([
     "roles/cloudkms.signerVerifier",
-    "roles/privateca.certificateManager", # Allows listing and getting certs
+    "roles/privateca.certificateManager",
     "roles/storage.objectAdmin",
     "roles/secretmanager.secretAccessor",
     "roles/artifactregistry.reader",
-    "roles/logging.logWriter"
+    "roles/logging.logWriter",
+    "roles/eventarc.eventReceiver",
+    "roles/run.invoker" 
   ])
   project = var.project_id
   role    = each.key
@@ -63,22 +57,24 @@ resource "google_project_iam_member" "cloud_build_permissions" {
 }
 
 # -----------------------------------------------------------------------------
-# 3. Pub/Sub & Notifications
+# 3. EventArc Config
 # -----------------------------------------------------------------------------
 
-resource "google_pubsub_topic" "gcs_events" {
-  name    = "gcs-c2pa-uploads"
-  project = var.project_id
-}
-
-resource "google_storage_notification" "gcs_notification" {
-  bucket         = google_storage_bucket.uploads.name
-  topic          = google_pubsub_topic.gcs_events.id
-  payload_format = "JSON_API_V1"
-  event_types    = ["OBJECT_FINALIZE"]
-  
-  depends_on = [google_pubsub_topic_iam_member.gcs_pubsub_publisher]
-}
+event_trigger {
+    trigger_region = each.key 
+    
+    # This event type fires when a new object is finalized (uploaded)
+    event_type     = "google.cloud.storage.object.v1.finalized"
+    retry_policy   = "RETRY_POLICY_RETRY"
+    
+    # Use the function's SA to manage the trigger identity
+    service_account_email = google_service_account.function_sa.email
+    
+    event_filters {
+      attribute = "bucket"
+      value     = google_storage_bucket.uploads.name
+    }
+  }
 
 # -----------------------------------------------------------------------------
 # 4. Function Source & Deployment (Gen 2)
@@ -130,16 +126,9 @@ resource "google_cloudfunctions2_function" "c2pa_signer" {
     }
   }
 
-  # Eventarc Trigger for Pub/Sub
-  event_trigger {
-    trigger_region = each.key
-    event_type     = "google.cloud.pubsub.topic.v1.messagePublished"
-    pubsub_topic   = google_pubsub_topic.gcs_events.id
-    retry_policy   = "RETRY_POLICY_RETRY"
-  }
+
 
   depends_on = [
-    google_project_iam_member.function_permissions,
-    google_storage_notification.gcs_notification
+    google_project_iam_member.function_permissions
   ]
 }
