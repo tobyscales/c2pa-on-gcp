@@ -33,7 +33,7 @@ resource "google_service_account" "function_sa" {
 resource "google_project_iam_member" "function_permissions" {
   for_each = toset([
     "roles/cloudkms.signerVerifier",
-    "roles/privateca.certificateRequester",
+    "roles/privateca.certificateManager", # Allows listing and getting certs
     "roles/storage.objectAdmin",
     "roles/secretmanager.secretAccessor",
     "roles/artifactregistry.reader",
