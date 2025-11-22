@@ -1,8 +1,10 @@
 # cas.tf
 
 resource "google_privateca_ca_pool" "pool" {
+  for_each = toset(var.regions)
+
   name     = "c2pa-ca-pool-${random_id.suffix.hex}"
-  location = var.regions[0] # Place the pool in the primary region
+  location = each.key
   tier     = "DEVOPS"
   project  = var.project_id
 
@@ -36,8 +38,8 @@ resource "google_privateca_certificate_authority" "regional_ca" {
       }
       key_usage {
         base_key_usage {
-          cert_sign = true
-          crl_sign  = true
+          digital_signature = true
+          content_commitment = true
         }
     extended_key_usage {
         }
