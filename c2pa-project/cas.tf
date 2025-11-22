@@ -16,7 +16,7 @@ resource "google_privateca_ca_pool" "pool" {
 resource "google_privateca_certificate_authority" "regional_ca" {
   for_each = toset(var.regions)
 
-  pool                     = google_privateca_ca_pool.pool-${each.key}.name
+  pool                     = google_privateca_ca_pool.pool.name.c2pa-ca-pool-${each.key}
   certificate_authority_id = "c2pa-ca-${each.value}"
   location                 = each.value # Create a CA in each region
   project                  = var.project_id
