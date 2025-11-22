@@ -1,6 +1,5 @@
-# -----------------------------------------------------------------------------
-# 1. Write the Python Script to Disk (With PEP 723 Metadata)
-# -----------------------------------------------------------------------------
+# certificate_provisioner.tf
+
 resource "local_file" "create_cert_script" {
   filename = "${path.module}/create_cert.py"
   content  = <<EOF
@@ -15,6 +14,11 @@ resource "local_file" "create_cert_script" {
 
 import argparse
 import time
+import sys
+
+# Debug: print python path to ensure libraries are found
+# print(sys.path)
+
 from google.cloud import kms
 from google.cloud import privateca_v1
 from google.cloud.privateca_v1.types import (
@@ -32,21 +36,22 @@ def create_c2pa_certificate(project_id, location, pool_id, key_ring, key_name, k
 
     print(f"--- Fetching Public Key from KMS: {key_name} ---")
     try:
-        # Retry logic for KMS propagation
         kms_public_key = None
-        for _ in range(5):
+        # Simple retry loop
+        for i in range(5):
             try:
                 kms_public_key = client_kms.get_public_key(request={"name": kms_key_full})
                 break
-            except Exception:
-                time.sleep(2)
+            except Exception as e:
+                print(f"Attempt {i+1} failed: {e}. Retrying...")
+                time.sleep(5)
         
         if not kms_public_key:
             raise Exception("Could not fetch public key after retries")
 
     except Exception as e:
-        print(f"Error fetching KMS key: {e}")
-        return
+        print(f"Fatal Error fetching KMS key: {e}")
+        sys.exit(1)
 
     pub_key_obj = PublicKey(
         key=kms_public_key.pem.encode("utf-8"),
@@ -77,9 +82,12 @@ def create_c2pa_certificate(project_id, location, pool_id, key_ring, key_name, k
     # Lifetime: 30 Days
     lifetime = duration_pb2.Duration(seconds=30 * 24 * 60 * 60)
 
+    # Unique ID to prevent collision on re-runs
+    cert_id = f"c2pa-signer-{int(time.time())}"
+
     request = privateca_v1.CreateCertificateRequest(
         parent=ca_pool_full,
-        certificate_id=f"c2pa-signer-{int(time.time())}", 
+        certificate_id=cert_id,
         certificate=Certificate(config=config, lifetime=lifetime)
     )
 
@@ -87,11 +95,11 @@ def create_c2pa_certificate(project_id, location, pool_id, key_ring, key_name, k
         response = client_ca.create_certificate(request=request)
         print(f"✅ Certificate Created: {response.name}")
     except Exception as e:
-        # If it already exists, we are good. 
         if "already exists" in str(e):
-            print(f"ℹ️ Certificate already exists.")
+            print(f"ℹ️ Certificate already exists. Skipping.")
         else:
-            raise e
+            print(f"❌ Error creating certificate: {e}")
+            sys.exit(1)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -111,9 +119,6 @@ if __name__ == "__main__":
 EOF
 }
 
-# -----------------------------------------------------------------------------
-# 2. Execute using UV
-# -----------------------------------------------------------------------------
 resource "null_resource" "issue_certificate" {
   triggers = {
     key_id  = google_kms_crypto_key.signing_key.id
@@ -121,29 +126,24 @@ resource "null_resource" "issue_certificate" {
   }
 
   provisioner "local-exec" {
-    # We use /bin/bash to ensure consistent behavior for conditional logic
     interpreter = ["/bin/bash", "-c"]
     
     command = <<EOT
-      # 1. Check for uv; download if missing
       if ! command -v uv &> /dev/null; then
-        echo "uv not found. Installing from astral.sh..."
+        echo "Installing uv..."
         curl -LsSf https://astral.sh/uv/install.sh | sh
-        
-        # Add default install paths to PATH for this session
         export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
       fi
 
-      echo "Using uv version: $(uv --version)"
-
-      # 2. Run the script
-      # 'uv run' reads the dependencies from the Python file header,
-      # creates a cached venv, installs deps, and runs the code.
+      # Force uv to reinstall/sync dependencies to fix broken environments
+      uv cache clean
+      
+      echo "Running cert creation script..."
       uv run ${local_file.create_cert_script.filename} \
         --project_id ${var.project_id} \
         --location ${google_privateca_ca_pool.pool.location} \
         --pool_id ${google_privateca_ca_pool.pool.name} \
-        --key_ring ${google_kms_key_ring.keyring.name} \
+        --key_ring ${google_kms_key_ring.key_ring.name} \
         --key_name ${google_kms_crypto_key.signing_key.name} \
         --key_version "1"
     EOT
