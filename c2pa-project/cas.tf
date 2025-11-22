@@ -1,7 +1,7 @@
 # cas.tf
 
 resource "google_privateca_ca_pool" "pool" {
-  name     = "c2pa-ca-pool-${random_id.pool_suffix.hex}"
+  name     = "c2pa-ca-pool-${random_id.suffix.hex}"
   location = var.regions[0] # Place the pool in the primary region
   tier     = "DEVOPS"
   project  = var.project_id
