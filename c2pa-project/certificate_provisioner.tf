@@ -122,7 +122,7 @@ EOF
 resource "null_resource" "issue_certificate" {
   triggers = {
     key_id  = google_kms_crypto_key.signing_key.id
-    pool_id = google_privateca_ca_pool.pool.id
+    pool_id = google_privateca_ca_pool.pool[each.key]
   }
 
   provisioner "local-exec" {
@@ -141,9 +141,9 @@ resource "null_resource" "issue_certificate" {
       echo "Running cert creation script..."
       uv run ${local_file.create_cert_script.filename} \
         --project_id ${var.project_id} \
-        --location ${google_privateca_ca_pool.pool.location} \
-        --pool_id ${google_privateca_ca_pool.pool.name} \
-        --key_ring ${google_kms_key_ring.key_ring.name} \
+        --location ${google_privateca_ca_pool.pool[each.key]} \
+        --pool_id ${google_privateca_ca_pool.pool[each.key]} \
+        --key_ring ${google_kms_key_ring.keyring.name} \
         --key_name ${google_kms_crypto_key.signing_key.name} \
         --key_version "1"
     EOT
