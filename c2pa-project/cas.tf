@@ -3,7 +3,7 @@
 resource "google_privateca_ca_pool" "pool" {
   for_each = toset(var.regions)
 
-  name     = "c2pa-ca-pool-${random_id.suffix.hex}"
+  name     = "c2pa-ca-pool-${each.key}-${random_id.suffix.hex}"
   location = each.key
   tier     = "DEVOPS"
   project  = var.project_id
