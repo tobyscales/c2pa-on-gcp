@@ -101,7 +101,7 @@ resource "google_cloudfunctions2_function" "c2pa_signer" {
       PROJECT_ID                = var.project_id
       SIGNED_BUCKET_NAME        = google_storage_bucket.signed.name
       KMS_KEY_ID                = google_kms_crypto_key.signing_key.id
-      CA_POOL_ID                = google_privateca_ca_pool.pool.id
+      CA_POOL_ID                = google_privateca_ca_pool.pool[each_key].id
       AUTHOR_NAME_SECRET_ID     = google_secret_manager_secret.author_name_secret.secret_id
       CLAIM_GENERATOR_SECRET_ID = google_secret_manager_secret.claim_generator_secret.secret_id
     }
