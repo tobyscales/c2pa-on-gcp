@@ -1,8 +1,9 @@
 # gcs.tf
 
 resource "google_storage_bucket" "uploads" {
-  name          = "c2pa-uploads-${random_id.suffix.hex}"
-  location      = var.location
+  for_each = toset(var.regions)
+  name          = "c2pa-uploads-${each.value}-${random_id.suffix.hex}"
+  location      = each.key
   force_destroy = true
   project       = var.project_id
 }

@@ -1,6 +1,3 @@
-resource "local_file" "create_cert_script" {
-  filename = "${path.module}/create_cert.py"
-  content  = <<EOF
 # /// script
 # requires-python = ">=3.9"
 # dependencies = [
@@ -110,45 +107,3 @@ if __name__ == "__main__":
         args.project_id, args.location, args.kms_location, args.pool_id, 
         args.key_ring, args.key_name, args.key_version, args.common_name
     )
-EOF
-}
-
-resource "null_resource" "issue_certificate" {
- for_each = toset(var.regions)
-  triggers = {
-    key_id  = google_kms_crypto_key.signing_key.id
-    pool_id = google_privateca_ca_pool.pool[each.key].id
-  }
-
-  provisioner "local-exec" {
-    interpreter = ["/bin/bash", "-c"]
-    
-    command = <<EOT
-      if ! command -v uv &> /dev/null; then
-        echo "Installing uv..."
-        curl -LsSf https://astral.sh/uv/install.sh | sh
-        export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
-      fi
-
-      # Force uv to reinstall/sync dependencies
-      uv cache clean
-      
-      echo "Running cert creation script..."
-      uv run ${local_file.create_cert_script.filename} \
-        --project_id ${var.project_id} \
-        --location ${google_privateca_ca_pool.pool[each.key].location} \
-        --kms_location "global" \
-        --pool_id ${google_privateca_ca_pool.pool[each.key].id} \
-        --key_ring ${google_kms_key_ring.keyring.name} \
-        --key_name ${google_kms_crypto_key.signing_key.name} \
-        --key_version "1"
-    EOT
-  }
-
-  depends_on = [
-    local_file.create_cert_script,
-    google_kms_crypto_key.signing_key,
-    google_privateca_ca_pool.pool,
-    google_project_service.apis 
-  ]
-}

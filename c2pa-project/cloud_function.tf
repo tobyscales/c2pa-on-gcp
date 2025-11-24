@@ -9,11 +9,6 @@ data "google_storage_project_service_account" "gcs_account" {
   project = var.project_id
 }
 
-# Get project number for constructing default service account emails
-#data "google_project" "project" {
-#  project_id = var.project_id
-#}
-
 # Create the dedicated Service Account for the Function Runtime
 resource "google_service_account" "function_sa" {
   account_id   = "c2pa-signer-sa"
@@ -37,6 +32,18 @@ resource "google_project_iam_member" "function_permissions" {
   role    = each.key
   member  = "serviceAccount:${google_service_account.function_sa.email}"
 }
+# Required for Eventarc to invoke authenticated Cloud Run services
+resource "google_project_iam_member" "pubsub_token_creator" {
+  project = var.project_id
+  role    = "roles/iam.serviceAccountTokenCreator"
+  member  = "serviceAccount:service-${data.google_project.project.number}@gcp-sa-pubsub.iam.gserviceaccount.com"
+}
+
+resource "google_project_iam_member" "gcs_pubsub_publisher" {
+  project = var.project_id
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:${data.google_storage_project_service_account.gcs_account.email_address}"
+}
 
 # -----------------------------------------------------------------------------
 # 2. Build System Permissions
@@ -45,7 +52,8 @@ resource "google_project_iam_member" "function_permissions" {
 # NOTE: Gen 2 uses Cloud Build. We grant the default Compute Service Account 
 # (often used by Cloud Build) access to read the source code bucket.
 resource "google_storage_bucket_iam_member" "build_source_reader" {
-  bucket = google_storage_bucket.uploads.name
+  for_each = toset(var.regions)
+  bucket = google_storage_bucket.uploads[each.key].name
   role   = "roles/storage.objectViewer"
   member = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
 }
@@ -68,8 +76,9 @@ data "archive_file" "source" {
 }
 
 resource "google_storage_bucket_object" "function_archive" {
+  for_each = toset(var.regions)
   name   = "source-${data.archive_file.source.output_md5}.zip" # Add hash to force redeploy on change
-  bucket = google_storage_bucket.uploads.name
+  bucket = google_storage_bucket.uploads[each.key].name
   source = data.archive_file.source.output_path
 }
 
@@ -85,8 +94,8 @@ resource "google_cloudfunctions2_function" "c2pa_signer" {
     entry_point = "c2pa_sign_pubsub" # Must match the function name in main.py
     source {
       storage_source {
-        bucket = google_storage_bucket.uploads.name
-        object = google_storage_bucket_object.function_archive.name
+        bucket = google_storage_bucket.uploads[each.key].name
+        object = google_storage_bucket_object.function_archive[each.key].name
       }
     }
   }
@@ -101,14 +110,13 @@ resource "google_cloudfunctions2_function" "c2pa_signer" {
       PROJECT_ID                = var.project_id
       SIGNED_BUCKET_NAME        = google_storage_bucket.signed.name
       KMS_KEY_ID                = google_kms_crypto_key.signing_key.id
-      CA_POOL_ID                = google_privateca_ca_pool.pool[each_key]
+      CA_POOL_ID                = google_privateca_ca_pool.pool[each.key].id
       AUTHOR_NAME_SECRET_ID     = google_secret_manager_secret.author_name_secret.secret_id
       CLAIM_GENERATOR_SECRET_ID = google_secret_manager_secret.claim_generator_secret.secret_id
     }
   }
 
 event_trigger {
-    # FIX: Dynamically set the trigger region to match the function deployment region
     trigger_region = each.key 
     
     # This event type fires when a new object is finalized (uploaded)
@@ -120,11 +128,12 @@ event_trigger {
     
     event_filters {
       attribute = "bucket"
-      value     = google_storage_bucket.uploads.name
+      value     = google_storage_bucket.uploads[each.key].name
     }
   }
 
   depends_on = [
-    google_project_iam_member.function_permissions
+    google_project_iam_member.function_permissions,
+    google_project_iam_member.gcs_pubsub_publisher
   ]
 }

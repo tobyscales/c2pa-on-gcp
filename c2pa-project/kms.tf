@@ -2,7 +2,7 @@
 
 resource "google_kms_key_ring" "keyring" {
   name     = "c2pa-ring-${random_id.suffix.hex}"
-  location = "global"
+  location = "global" #var.multi_region_location
   project  = var.project_id
 
     depends_on = [

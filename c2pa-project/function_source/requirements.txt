@@ -1,7 +1,7 @@
+functions-framework==3.*
 google-cloud-storage
-google-cloud-private-ca
-google-cloud-kms
 google-cloud-secret-manager
+google-cloud-kms
+google-cloud-private-ca
 google-crc32c
 c2pa-python
-functions-framework

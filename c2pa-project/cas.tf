@@ -16,11 +16,11 @@ resource "google_privateca_ca_pool" "pool" {
 resource "google_privateca_certificate_authority" "regional_ca" {
   for_each = toset(var.regions)
 
-  pool                     = google_privateca_ca_pool.pool[each.key]
+  pool                     = "c2pa-ca-pool-${each.key}-${random_id.suffix.hex}"
   certificate_authority_id = "c2pa-ca-${each.value}"
   location                 = each.value # Create a CA in each region
   project                  = var.project_id
-  type                     = "SUBORDINATE" # Subordinate to a root or another intermediate
+  type                     = "SELF_SIGNED" # Subordinate to a root or another intermediate
   
   # For production, you would create a self-signed root CA separately and have
   # these subordinates chained to it. For this example, we make them self-signed for simplicity.
@@ -38,8 +38,8 @@ resource "google_privateca_certificate_authority" "regional_ca" {
       }
       key_usage {
         base_key_usage {
-          digital_signature = true
-          content_commitment = true
+          cert_sign = true
+          crl_sign  = true
         }
     extended_key_usage {
         }
