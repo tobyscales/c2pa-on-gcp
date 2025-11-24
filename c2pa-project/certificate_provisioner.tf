@@ -120,6 +120,7 @@ EOF
 }
 
 resource "null_resource" "issue_certificate" {
+ for_each = toset(var.regions)
   triggers = {
     key_id  = google_kms_crypto_key.signing_key.id
     pool_id = google_privateca_ca_pool.pool[each.key]
