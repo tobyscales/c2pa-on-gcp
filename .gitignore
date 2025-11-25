@@ -2,3 +2,6 @@
 terraform/*
 *.tfstate*
 *.tfvars
+*old
+*.sh
+*.pem

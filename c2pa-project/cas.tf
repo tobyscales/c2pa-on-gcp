@@ -5,18 +5,34 @@ resource "google_privateca_ca_pool" "pool" {
 
   name     = "c2pa-ca-pool-${each.key}-${random_id.suffix.hex}"
   location = each.key
-  tier     = "DEVOPS"
+  tier     = "ENTERPRISE"
   project  = var.project_id
-
+  
     depends_on = [
     google_project_service.apis["privateca.googleapis.com"]
   ]
 }
 
+# We need to fetch the email identity of the Google-managed CAS Service Agent
+resource "google_project_service_identity" "privateca_sa" {
+  provider = google-beta
+  project  = var.project_id
+  service  = "privateca.googleapis.com"
+}
+
+# Grant the CAS Service Agent permission to sign using the KMS key
+resource "google_kms_crypto_key_iam_member" "cas_signer_binding" {
+  for_each = toset(var.regions)
+
+  crypto_key_id = google_kms_crypto_key.signing_key[each.key].id
+  role          = "roles/cloudkms.signerVerifier"
+  member        = "serviceAccount:${google_project_service_identity.privateca_sa.email}"
+}
+
 resource "google_privateca_certificate_authority" "regional_ca" {
   for_each = toset(var.regions)
 
-  pool                     = "c2pa-ca-pool-${each.key}-${random_id.suffix.hex}"
+  pool                     = google_privateca_ca_pool.pool[each.key].name
   certificate_authority_id = "c2pa-ca-${each.value}"
   location                 = each.value # Create a CA in each region
   project                  = var.project_id
@@ -53,5 +69,8 @@ resource "google_privateca_certificate_authority" "regional_ca" {
   lifetime = "${365 * 24 * 3600}s" # 1 year
 
   # Ensure the pool exists before creating the CA
-  depends_on = [google_privateca_ca_pool.pool]
+  depends_on = [
+    google_privateca_ca_pool.pool,
+    google_kms_crypto_key_iam_member.cas_signer_binding
+  ]
 }
