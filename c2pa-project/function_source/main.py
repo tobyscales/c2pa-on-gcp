@@ -57,14 +57,24 @@ def get_secret(project_id, secret_id, version_id="latest"):
 
 def get_latest_active_cert_chain(ca_pool_full_name):
     print(f"Looking for active certificates in: {ca_pool_full_name}")
+    
+    # FIX: Remove 'order_by'. The API does not support it.
     request = privateca_v1.ListCertificatesRequest(
         parent=ca_pool_full_name,
-        order_by="create_time desc",
         filter="revocation_details.revocation_state = ACTIVE"
     )
 
-    for cert in ca_client.list_certificates(request=request):
-        now = datetime.now(timezone.utc)
+    # 1. Fetch all active certs
+    certs = list(ca_client.list_certificates(request=request))
+    
+    # 2. Sort client-side (Newest created first)
+    # The client library converts protobuf timestamps to Python datetime automatically
+    certs.sort(key=lambda x: x.create_time, reverse=True)
+
+    # 3. Iterate to find the first unexpired one
+    now = datetime.now(timezone.utc)
+    
+    for cert in certs:
         if cert.expire_time and cert.expire_time < now:
             continue 
 
@@ -76,8 +86,8 @@ def get_latest_active_cert_chain(ca_pool_full_name):
         print(f"Using Certificate: {cert.name}")
         return full_chain
 
-    raise RuntimeError(f"No active certificates found in pool {ca_pool_full_name}")
-
+    raise RuntimeError(f"No active, unexpired certificates found in pool {ca_pool_full_name}")
+    
 @functions_framework.cloud_event
 def c2pa_sign_pubsub(cloud_event):
     """
