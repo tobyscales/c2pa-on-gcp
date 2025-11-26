@@ -46,7 +46,26 @@ resource "google_project_iam_member" "gcs_pubsub_publisher" {
 }
 
 # -----------------------------------------------------------------------------
-# 2. Function Source & Deployment (Gen 2)
+# 2. Build System Permissions
+# -----------------------------------------------------------------------------
+
+# NOTE: Gen 2 uses Cloud Build. We grant the default Compute Service Account 
+# (often used by Cloud Build) access to read the source code bucket.
+resource "google_storage_bucket_iam_member" "build_source_reader" {
+  for_each = toset(var.regions)
+  bucket = google_storage_bucket.uploads[each.key].name
+  role   = "roles/storage.objectViewer"
+  member = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
+}
+
+resource "google_project_iam_member" "cloud_build_permissions" {
+  project = var.project_id
+  role    = "roles/cloudbuild.builds.builder"
+  member  = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
+}
+
+# -----------------------------------------------------------------------------
+# 3. Function Source & Deployment (Gen 2)
 # -----------------------------------------------------------------------------
 
 data "archive_file" "source" {
@@ -140,6 +159,8 @@ resource "google_cloudfunctions2_function" "c2pa_signer" {
 
   depends_on = [
     google_project_iam_member.function_permissions,
-    google_project_iam_member.gcs_pubsub_publisher
+    google_project_iam_member.gcs_pubsub_publisher,
+    google_project_iam_member.cloud_build_permissions,
+    google_project_iam_member.pubsub_token_creator
   ]
 }

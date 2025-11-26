@@ -18,13 +18,14 @@ resource "google_storage_bucket" "tfstate" {
   project       = var.project_id
   #force_destroy = false # Protect this bucket!
   force_destroy = true
+  uniform_bucket_level_access = true
 
   versioning {
     enabled = true
   }
 
   lifecycle {
-    # prevent_destroy = true
+  # prevent_destroy = true
   prevent_destroy = false
   }
 }
@@ -35,7 +36,7 @@ resource "google_secret_manager_secret" "tfstate_bucket_name_secret" {
   secret_id = "tfstate-bucket-name"
 
   replication {
-    automatic = true
+    auto {}
   }
 
   # Ensure the bucket is created before the secret that refers to it
@@ -52,7 +53,7 @@ resource "google_project_service" "apis" {
   for_each = toset([
         "storage.googleapis.com",
         "cloudresourcemanager.googleapis.com",
-    "secretmanager.googleapis.com"
+        "secretmanager.googleapis.com"
   ])
   project = var.project_id
   service = each.key

@@ -6,6 +6,7 @@ resource "google_storage_bucket" "uploads" {
   location      = each.key
   force_destroy = true
   project       = var.project_id
+  uniform_bucket_level_access = true
 }
 
 resource "google_storage_bucket" "signed" {
@@ -13,4 +14,5 @@ resource "google_storage_bucket" "signed" {
   location      = var.location
   force_destroy = true
   project       = var.project_id
+  uniform_bucket_level_access = true
 }
