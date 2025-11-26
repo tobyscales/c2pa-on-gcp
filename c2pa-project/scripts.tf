@@ -7,6 +7,9 @@ resource "null_resource" "provision_c2pa_cert" {
   triggers = {
     kms_key_id = google_kms_crypto_key.signing_key[each.key].id
     ca_pool_id = google_privateca_ca_pool.pool[each.key].id
+    author_ver_id  = google_secret_manager_secret_version.author_name_version.id
+    org_ver_id     = google_secret_manager_secret_version.author_org_version.id
+    template_id = google_privateca_certificate_template.c2pa_leaf[each.key].id # Trigger on template change
     script_hash = filesha256("${path.module}/scripts/provision_cert.py")
   }
 
@@ -18,6 +21,7 @@ resource "null_resource" "provision_c2pa_cert" {
       --python 3.11 \
       --with google-cloud-kms \
       --with google-cloud-private-ca \
+      --with google-cloud-secret-manager \
       --with cryptography \
       python ${path.module}/scripts/provision_cert.py
     EOT
@@ -27,7 +31,10 @@ resource "null_resource" "provision_c2pa_cert" {
       PROJECT_ID  = var.project_id
       LOCATION    = each.key
       CA_POOL_ID  = google_privateca_ca_pool.pool[each.key].name
-      # We append the version '1' here. In a real setup, you might use a data source to find the primary version.
+      TEMPLATE_ID   = google_privateca_certificate_template.c2pa_leaf[each.key].id
+      AUTHOR_SECRET_VER = google_secret_manager_secret_version.author_name_version.name
+      ORG_SECRET_VER    = google_secret_manager_secret_version.author_org_version.name
+      # TODO: a bug in the crypto_key provider requires us to manually specify a key version for now
       KMS_KEY_ID  = "${google_kms_crypto_key.signing_key[each.key].id}/cryptoKeyVersions/1"
     }
   }
@@ -37,6 +44,9 @@ resource "null_resource" "provision_c2pa_cert" {
   depends_on = [
     google_privateca_certificate_authority.regional_ca, # Wait for CA to be ready
     google_kms_crypto_key.signing_key,                  # Wait for Key to be ready
-    google_kms_crypto_key_iam_member.cas_signer_binding # Wait for permissions
+    google_kms_crypto_key_iam_member.cas_signer_binding, # Wait for permissions
+    google_privateca_certificate_template.c2pa_leaf,
+    google_secret_manager_secret_version.author_name_version,
+    google_secret_manager_secret_version.author_org_version
   ]
 }

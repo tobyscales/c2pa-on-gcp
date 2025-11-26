@@ -35,3 +35,9 @@ variable "c2pa_author_name" {
   type        = string
   default     = "My Organization"
 }
+
+variable "c2pa_author_org" {
+  description = "The Organization (O) for the C2PA certificate (e.g., 'Acme Corp')"
+  type        = string
+  default     = "C2PA on GCP"
+}
