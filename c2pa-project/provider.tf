@@ -19,9 +19,3 @@ provider "google" {
   project = var.project_id
   region  = var.regions[0]
 }
-
-# A provider specifically for multi-regional resources
-provider "google" {
-  alias   = "multi_region"
-  project = var.project_id
-}
