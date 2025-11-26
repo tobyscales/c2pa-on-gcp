@@ -18,15 +18,14 @@ resource "google_kms_crypto_key" "signing_key" {
   key_ring        = google_kms_key_ring.keyring[each.key].id
   purpose         = "ASYMMETRIC_SIGN"
   version_template {
-    algorithm = "RSA_SIGN_PSS_2048_SHA256"
+    algorithm = "EC_SIGN_P256_SHA256"
     protection_level = "HSM"
   }
   destroy_scheduled_duration = "86400s" # 24 hours
 }
 
-# NEW: Explicitly create the version resource
+# TODO: upgrade to using key_versions in future; currently (11/25) there's a TF provider bug preventing usage of it
 #resource "google_kms_crypto_key_version" "signing_key_version" {
-#  for_each = toset(var.regions)
-  
+#  for_each = toset(var.regions)  
 #  crypto_key = google_kms_crypto_key.signing_key[each.key].id
 #}

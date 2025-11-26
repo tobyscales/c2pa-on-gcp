@@ -5,3 +5,4 @@ terraform/*
 *old
 *.sh
 *.pem
+*/_archive/*

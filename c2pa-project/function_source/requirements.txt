@@ -4,4 +4,5 @@ google-cloud-secret-manager
 google-cloud-kms
 google-cloud-private-ca
 google-crc32c
-c2pa-python
+c2pa-python>=0.5.0
+cryptography

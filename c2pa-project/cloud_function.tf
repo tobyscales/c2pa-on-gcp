@@ -90,7 +90,7 @@ resource "google_cloudfunctions2_function" "c2pa_signer" {
   description = "C2PA signing function triggered by GCS uploads via Pub/Sub (Gen 2)."
 
   build_config {
-    runtime     = "python310"
+    runtime     = "python313"
     entry_point = "c2pa_sign_pubsub" # Must match the function name in main.py
     source {
       storage_source {
@@ -109,7 +109,8 @@ resource "google_cloudfunctions2_function" "c2pa_signer" {
     environment_variables = {
       PROJECT_ID                = var.project_id
       SIGNED_BUCKET_NAME        = google_storage_bucket.signed.name
-      KMS_KEY_ID                = google_kms_crypto_key.signing_key[each.key].id
+      #KMS_KEY_ID = google_kms_crypto_key_version.signing_key_version[each.key].id 
+      KMS_KEY_ID                = "${google_kms_crypto_key.signing_key[each.key].id}/cryptoKeyVersions/1"
       CA_POOL_ID                = google_privateca_ca_pool.pool[each.key].id
       AUTHOR_NAME_SECRET_ID     = google_secret_manager_secret.author_name_secret.secret_id
       CLAIM_GENERATOR_SECRET_ID = google_secret_manager_secret.claim_generator_secret.secret_id

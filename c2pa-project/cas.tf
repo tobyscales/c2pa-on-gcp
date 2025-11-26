@@ -56,16 +56,22 @@ resource "google_privateca_certificate_authority" "regional_ca" {
         base_key_usage {
           cert_sign = true
           crl_sign  = true
-        }
+          digital_signature = true
+          content_commitment = true
+          }
     extended_key_usage {
-        }
+      email_protection = true
+      }
       }
     }
   }
   key_spec {
-    algorithm = "RSA_PKCS1_4096_SHA256"
+    algorithm = "EC_P256_SHA256"
   }
   
+  deletion_protection                    = false
+  skip_grace_period                      = true
+  ignore_active_certificates_on_deletion = true
   lifetime = "${365 * 24 * 3600}s" # 1 year
 
   # Ensure the pool exists before creating the CA
